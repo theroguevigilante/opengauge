@@ -1,0 +1,7 @@
+# Zig
+.zig-cache/
+zig-out/
+build/
+*.pdf
+*.o
+*.a
