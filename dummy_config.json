@@ -1,0 +1,6 @@
+{
+  "model": "llama-3-8b-instruct",
+  "backend": "llama.cpp",
+  "prompt": "What is the capital of France?",
+  "metrics": ["ttft", "tokens_per_second"]
+}
