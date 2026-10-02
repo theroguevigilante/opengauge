@@ -3,7 +3,9 @@ const std = @import("std");
 pub const Config = struct {
     model: []const u8,
     backend: []const u8,
+    base_url: []const u8,
     prompt: []const u8,
+    max_tokens: u32 = 512,
     metrics: []const []const u8,
 };
 

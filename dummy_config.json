@@ -1,6 +1,8 @@
 {
   "model": "llama-3-8b-instruct",
   "backend": "llama.cpp",
+  "base_url": "http://localhost:8080",
   "prompt": "What is the capital of France?",
-  "metrics": ["ttft", "tokens_per_second"]
+  "max_tokens": 64,
+  "metrics": ["latency", "tokens_per_second"]
 }
