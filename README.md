@@ -2,12 +2,32 @@
 
 A lightweight CLI for benchmarking and evaluating open-weight language models.
 
+## Usage
+
+```bash
+zig build
+./zig-out/bin/opengauge run config.json
+```
+
+Example `config.json`:
+
+```json
+{
+  "model": "llama-3-8b-instruct",
+  "backend": "ollama",
+  "base_url": "http://localhost:11434",
+  "prompt": "What is the capital of France?",
+  "max_tokens": 256,
+  "runs": 5,
+  "warmup": 1
+}
+```
+
 ## Features
 
-* **Benchmarking**: TTFT, generation speed, response time, and concurrency.
-* **Resource Monitoring**: System and GPU memory tracking.
-* **Adapters**: Local (`llama.cpp`, Ollama) and OpenAI-compatible endpoints.
-* **Quality Evaluation**: Task-specific output validation.
+* **Backends**: `llama.cpp`, `ollama`, and OpenAI-compatible endpoints
+* **Stats**: mean, p50, p90 latency, and tokens/sec over configurable runs
+* **Dependency-free**: Zig standard library only
 
 ## License
 

@@ -6,7 +6,9 @@ pub const Config = struct {
     base_url: []const u8,
     prompt: []const u8,
     max_tokens: u32 = 512,
-    metrics: []const []const u8,
+    runs: u32 = 1,
+    warmup: u32 = 0,
+    metrics: []const []const u8 = &.{},
 };
 
 pub fn loadConfig(allocator: std.mem.Allocator, io: std.Io, path: []const u8) !std.json.Parsed(Config) {
