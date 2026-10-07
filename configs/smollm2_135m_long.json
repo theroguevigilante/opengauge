@@ -1,0 +1,9 @@
+{
+  "model": "smollm2:135m",
+  "backend": "ollama",
+  "base_url": "http://localhost:11434",
+  "prompt": "Write a short Python function that computes the nth Fibonacci number recursively.",
+  "max_tokens": 256,
+  "runs": 5,
+  "warmup": 1
+}

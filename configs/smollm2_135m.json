@@ -1,0 +1,9 @@
+{
+  "model": "smollm2:135m",
+  "backend": "ollama",
+  "base_url": "http://localhost:11434",
+  "prompt": "Explain gravity in one sentence.",
+  "max_tokens": 64,
+  "runs": 5,
+  "warmup": 1
+}

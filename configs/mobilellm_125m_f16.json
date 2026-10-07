@@ -1,0 +1,9 @@
+{
+  "model": "MobileLLM-125M-HF-GGUF:f16",
+  "backend": "ollama",
+  "base_url": "http://localhost:11434",
+  "prompt": "Explain gravity in one sentence.",
+  "max_tokens": 64,
+  "runs": 5,
+  "warmup": 1
+}
