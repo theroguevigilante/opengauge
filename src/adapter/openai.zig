@@ -1,5 +1,6 @@
 const std = @import("std");
 const iface = @import("adapter.zig");
+const TimedWriter = @import("../metrics/timer.zig").TimedWriter;
 
 /// Generic OpenAI-compatible HTTP adapter (POST /v1/chat/completions)
 pub const OpenAIAdapter = struct {
@@ -15,7 +16,7 @@ pub const OpenAIAdapter = struct {
         model: []const u8,
         messages: []const Message,
         max_tokens: u32,
-        stream: bool = false,
+        stream: bool = true,
     };
 
     const ChatChoice = struct {
@@ -23,8 +24,8 @@ pub const OpenAIAdapter = struct {
     };
 
     const ChatResponse = struct {
-        choices: []ChatChoice,
-        usage: struct { completion_tokens: u32 },
+        choices: []ChatChoice = &.{},
+        usage: ?struct { completion_tokens: u32 } = null,
     };
 
     pub fn adapter(self: *OpenAIAdapter) iface.Adapter {
@@ -32,7 +33,6 @@ pub const OpenAIAdapter = struct {
     }
 
     fn complete(ptr: *anyopaque, allocator: std.mem.Allocator, io: std.Io, req: iface.Request) anyerror!iface.Response {
-        
         const self: *OpenAIAdapter = @ptrCast(@alignCast(ptr));
 
         const url = try std.fmt.allocPrint(allocator, "{s}/v1/chat/completions", .{self.base_url});
@@ -46,8 +46,8 @@ pub const OpenAIAdapter = struct {
         }, .{});
         defer allocator.free(body);
 
-        var response_aw = std.Io.Writer.Allocating.init(allocator);
-        defer response_aw.deinit();
+        var tw = TimedWriter.init(allocator, io);
+        defer tw.deinit();
 
         var client: std.http.Client = .{ .allocator = allocator, .io = io };
         defer client.deinit();
@@ -68,26 +68,77 @@ pub const OpenAIAdapter = struct {
             .method = .POST,
             .payload = body,
             .extra_headers = extra_headers,
-            .response_writer = &response_aw.writer,
+            .response_writer = &tw.writer,
         });
         const t_end = std.Io.Timestamp.now(io, .real);
 
         if (result.status != .ok) return error.BadHttpStatus;
 
-        const parsed = try std.json.parseFromSlice(
+        const raw_bytes = tw.written();
+        var full_text = std.Io.Writer.Allocating.init(allocator);
+        defer full_text.deinit();
+        var tokens_generated: u32 = 0;
+
+        // Try single-object JSON first
+        if (std.json.parseFromSlice(
             ChatResponse,
             allocator,
-            response_aw.written(),
+            raw_bytes,
             .{ .ignore_unknown_fields = true, .allocate = .alloc_always },
-        );
-        defer parsed.deinit();
+        )) |parsed| {
+            defer parsed.deinit();
+            if (parsed.value.choices.len > 0) {
+                try full_text.writer.writeAll(parsed.value.choices[0].message.content);
+            }
+            if (parsed.value.usage) |u| {
+                tokens_generated = u.completion_tokens;
+            }
+        } else |_| {
+            // Parse SSE data lines
+            var it = std.mem.splitScalar(u8, raw_bytes, '\n');
+            const SseChunk = struct {
+                choices: []struct {
+                    delta: struct { content: ?[]const u8 = null },
+                } = &.{},
+                usage: ?struct { completion_tokens: u32 } = null,
+            };
 
-        if (parsed.value.choices.len == 0) return error.NoChoicesInResponse;
+            while (it.next()) |line| {
+                const trimmed = std.mem.trim(u8, line, " \r\t");
+                if (!std.mem.startsWith(u8, trimmed, "data:")) continue;
+                const json_str = std.mem.trim(u8, trimmed[5..], " \r\t");
+                if (std.mem.eql(u8, json_str, "[DONE]")) break;
+
+                const parsed = std.json.parseFromSlice(
+                    SseChunk,
+                    allocator,
+                    json_str,
+                    .{ .ignore_unknown_fields = true, .allocate = .alloc_always },
+                ) catch continue;
+                defer parsed.deinit();
+
+                if (parsed.value.choices.len > 0) {
+                    if (parsed.value.choices[0].delta.content) |part| {
+                        try full_text.writer.writeAll(part);
+                        tokens_generated += 1;
+                    }
+                }
+                if (parsed.value.usage) |u| {
+                    tokens_generated = u.completion_tokens;
+                }
+            }
+        }
+
+        const ttft_ms: u64 = if (tw.first_byte_time) |fb|
+            @intCast(t_start.durationTo(fb).toMilliseconds())
+        else
+            @intCast(t_start.durationTo(t_end).toMilliseconds());
 
         return .{
-            .text = try allocator.dupe(u8, parsed.value.choices[0].message.content),
+            .text = try allocator.dupe(u8, full_text.written()),
+            .ttft_ms = ttft_ms,
             .total_ms = @intCast(t_start.durationTo(t_end).toMilliseconds()),
-            .tokens_generated = parsed.value.usage.completion_tokens,
+            .tokens_generated = tokens_generated,
         };
     }
 };

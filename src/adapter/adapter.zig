@@ -8,6 +8,7 @@ pub const Request = struct {
 
 pub const Response = struct {
     text: []const u8,
+    ttft_ms: u64,
     total_ms: u64,
     tokens_generated: u32,
 

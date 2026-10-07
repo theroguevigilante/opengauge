@@ -1,7 +1,7 @@
 const std = @import("std");
 const metrics = @import("../metrics/metrics.zig");
 
-const DIVIDER = "─" ** 72;
+const DIVIDER = "─" ** 86;
 
 pub fn print(
     io: std.Io,
@@ -14,14 +14,15 @@ pub fn print(
     const stdout = &stdout_writer.interface;
 
     try stdout.print("\n{s}\n", .{DIVIDER});
-    try stdout.print("{s:<12} {s:<26} {s:>4}  {s:>9}  {s:>9}  {s:>9}  {s:>8}\n", .{
-        "backend", "model", "runs", "mean", "p50", "p90", "tok/s",
+    try stdout.print("{s:<10} {s:<26} {s:>4}  {s:>8}  {s:>9}  {s:>9}  {s:>9}  {s:>8}\n", .{
+        "backend", "model", "runs", "TTFT", "mean", "p50", "p90", "tok/s",
     });
     try stdout.print("{s}\n", .{DIVIDER});
-    try stdout.print("{s:<12} {s:<26} {d:>4}  {d:>7.0}ms  {d:>7.0}ms  {d:>7.0}ms  {d:>7.1}\n", .{
+    try stdout.print("{s:<10} {s:<26} {d:>4}  {d:>6.0}ms  {d:>7.0}ms  {d:>7.0}ms  {d:>7.0}ms  {d:>8.1}\n", .{
         backend,
         model,
         stats.n,
+        stats.p50_ttft_ms,
         stats.mean_ms,
         stats.p50_ms,
         stats.p90_ms,

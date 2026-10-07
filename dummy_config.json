@@ -1,9 +1,9 @@
 {
-  "model": "llama-3-8b-instruct",
+  "model": "smollm2:135m",
   "backend": "ollama",
   "base_url": "http://localhost:11434",
-  "prompt": "What is the capital of France?",
-  "max_tokens": 256,
-  "runs": 5,
+  "prompt": "Explain gravity in one sentence.",
+  "max_tokens": 64,
+  "runs": 3,
   "warmup": 1
 }

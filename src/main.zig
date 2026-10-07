@@ -116,6 +116,7 @@ pub fn main(init: std.process.Init) !void {
                 };
                 defer resp.deinit(allocator);
                 slot.* = .{
+                    .ttft_ms = resp.ttft_ms,
                     .total_ms = resp.total_ms,
                     .tokens_generated = resp.tokens_generated,
                 };
@@ -145,4 +146,5 @@ fn printUsage() void {
 
 test {
     _ = @import("metrics/metrics.zig");
+    _ = @import("metrics/timer.zig");
 }

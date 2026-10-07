@@ -26,7 +26,7 @@ Example `config.json`:
 ## Features
 
 * **Backends**: `llama.cpp`, `ollama`, and OpenAI-compatible endpoints
-* **Stats**: mean, p50, p90 latency, and tokens/sec over configurable runs
+* **Stats**: TTFT, mean, p50, p90 latency, and tokens/sec over configurable runs
 * **Dependency-free**: Zig standard library only
 
 ## License
