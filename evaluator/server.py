@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
@@ -7,12 +8,10 @@ import laya
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("laya-server")
 
-app = FastAPI(title="OpenGauge Laya Evaluator Server")
-
 agent = None
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global agent
     try:
         logger.info("Loading Laya model (convaiinnovations/laya)...")
@@ -20,6 +19,9 @@ async def startup_event():
         logger.info("Laya model loaded successfully.")
     except Exception as e:
         logger.error(f"Failed to load Laya model: {e}")
+    yield
+
+app = FastAPI(title="OpenGauge Laya Evaluator Server", lifespan=lifespan)
 
 class EvaluationRequest(BaseModel):
     prompt: str
@@ -28,10 +30,17 @@ class EvaluationRequest(BaseModel):
 class EvaluationResult(BaseModel):
     score: int  # 0 to 100
 
+@app.get("/health")
+async def health():
+    return {
+        "status": "ok",
+        "model_loaded": agent is not None
+    }
+
 @app.post("/score", response_model=EvaluationResult)
 async def score_response(req: EvaluationRequest):
     if agent is None:
-        raise HTTPException(status_code=500, detail="Laya model is not loaded yet.")
+        raise HTTPException(status_code=503, detail="Laya model is not loaded yet.")
 
     state = f"Prompt: {req.prompt}\nResponse: {req.response}"
     questions = {
@@ -43,7 +52,6 @@ async def score_response(req: EvaluationRequest):
 
     try:
         res = agent.predict(state, questions)
-        # Extract score from answers
         answers = res.get("answers", {})
         quality_entry = answers.get("quality", {})
         score = quality_entry.get("score", 50)
