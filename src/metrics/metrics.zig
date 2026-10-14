@@ -4,6 +4,7 @@ pub const RunResult = struct {
     ttft_ms: u64,
     total_ms: u64,
     tokens_generated: u32,
+    quality_score: ?u32 = null,
 };
 
 pub const Stats = struct {
@@ -14,6 +15,7 @@ pub const Stats = struct {
     p50_ms: f64,
     p90_ms: f64,
     mean_tok_s: f64,
+    mean_quality: ?f64 = null,
 
     /// Computes stats from a slice of results. Sorts the slice in place by total_ms.
     /// Caller must ensure results.len > 0.
@@ -21,10 +23,17 @@ pub const Stats = struct {
         var total_ttft_ms: u64 = 0;
         var total_ms: u64 = 0;
         var total_tokens: u64 = 0;
+        var total_quality: u64 = 0;
+        var quality_count: u32 = 0;
+
         for (results) |r| {
             total_ttft_ms += r.ttft_ms;
             total_ms += r.total_ms;
             total_tokens += r.tokens_generated;
+            if (r.quality_score) |q| {
+                total_quality += q;
+                quality_count += 1;
+            }
         }
 
         const n = results.len;
@@ -45,6 +54,11 @@ pub const Stats = struct {
             }
         }.lt);
 
+        const mean_quality: ?f64 = if (quality_count > 0)
+            @as(f64, @floatFromInt(total_quality)) / @as(f64, @floatFromInt(quality_count))
+        else
+            null;
+
         return .{
             .n = @intCast(n),
             .mean_ttft_ms = @as(f64, @floatFromInt(total_ttft_ms)) / nf,
@@ -54,6 +68,7 @@ pub const Stats = struct {
             .p90_ms = @floatFromInt(results[(n * 9) / 10].total_ms),
             .mean_tok_s = @as(f64, @floatFromInt(total_tokens)) /
                 (@as(f64, @floatFromInt(total_ms)) / 1000.0),
+            .mean_quality = mean_quality,
         };
     }
 };
@@ -66,15 +81,16 @@ test "Stats.compute single run with TTFT" {
     try std.testing.expectApproxEqAbs(@as(f64, 45.0), s.p50_ttft_ms, 0.01);
     try std.testing.expectApproxEqAbs(@as(f64, 200.0), s.mean_ms, 0.01);
     try std.testing.expectApproxEqAbs(@as(f64, 100.0), s.mean_tok_s, 0.01);
+    try std.testing.expectEqual(@as(?f64, null), s.mean_quality);
 }
 
-test "Stats.compute percentiles and TTFT" {
+test "Stats.compute percentiles, TTFT, and quality" {
     var results = [_]RunResult{
-        .{ .ttft_ms = 80, .total_ms = 500, .tokens_generated = 50 },
-        .{ .ttft_ms = 20, .total_ms = 100, .tokens_generated = 10 },
-        .{ .ttft_ms = 50, .total_ms = 300, .tokens_generated = 30 },
-        .{ .ttft_ms = 40, .total_ms = 200, .tokens_generated = 20 },
-        .{ .ttft_ms = 60, .total_ms = 400, .tokens_generated = 40 },
+        .{ .ttft_ms = 80, .total_ms = 500, .tokens_generated = 50, .quality_score = 90 },
+        .{ .ttft_ms = 20, .total_ms = 100, .tokens_generated = 10, .quality_score = 80 },
+        .{ .ttft_ms = 50, .total_ms = 300, .tokens_generated = 30, .quality_score = 70 },
+        .{ .ttft_ms = 40, .total_ms = 200, .tokens_generated = 20, .quality_score = 85 },
+        .{ .ttft_ms = 60, .total_ms = 400, .tokens_generated = 40, .quality_score = 75 },
     };
     const s = Stats.compute(&results);
     try std.testing.expectEqual(@as(u32, 5), s.n);
@@ -85,4 +101,6 @@ test "Stats.compute percentiles and TTFT" {
     try std.testing.expectApproxEqAbs(@as(f64, 300.0), s.p50_ms, 0.01);
     try std.testing.expectApproxEqAbs(@as(f64, 500.0), s.p90_ms, 0.01);
     try std.testing.expectApproxEqAbs(@as(f64, 100.0), s.mean_tok_s, 0.01);
+    // quality: (90+80+70+85+75)/5 = 400/5 = 80.0
+    try std.testing.expectApproxEqAbs(@as(f64, 80.0), s.mean_quality.?, 0.01);
 }

@@ -26,8 +26,9 @@ pub fn print(
 
     const backend_col = @max(backend.len, 10);
     const model_col = @max(model.len, 26);
-    // backend(backend_col) + 1 + model(model_col) + 1 + runs(4) + 2 + TTFT(8) + 2 + mean(9) + 2 + p50(9) + 2 + p90(9) + 2 + tok/s(8)
-    const total_width = backend_col + 1 + model_col + 1 + 4 + 2 + 8 + 2 + 9 + 2 + 9 + 2 + 9 + 2 + 8;
+    const quality_extra: usize = if (stats.mean_quality != null) 2 + 9 else 0;
+    // backend(backend_col) + 1 + model(model_col) + 1 + runs(4) + 2 + TTFT(8) + 2 + mean(9) + 2 + p50(9) + 2 + p90(9) + 2 + tok/s(8) + quality_extra
+    const total_width = backend_col + 1 + model_col + 1 + 4 + 2 + 8 + 2 + 9 + 2 + 9 + 2 + 9 + 2 + 8 + quality_extra;
 
     try stdout.writeByte('\n');
     try writeDivider(stdout, total_width);
@@ -39,9 +40,15 @@ pub fn print(
     try stdout.writeAll("model");
     try writeSpaces(stdout, model_col - "model".len + 1);
 
-    try stdout.print("{s:>4}  {s:>8}  {s:>9}  {s:>9}  {s:>9}  {s:>8}\n", .{
-        "runs", "TTFT", "mean", "p50", "p90", "tok/s",
-    });
+    if (stats.mean_quality != null) {
+        try stdout.print("{s:>4}  {s:>8}  {s:>9}  {s:>9}  {s:>9}  {s:>8}  {s:>9}\n", .{
+            "runs", "TTFT", "mean", "p50", "p90", "tok/s", "quality",
+        });
+    } else {
+        try stdout.print("{s:>4}  {s:>8}  {s:>9}  {s:>9}  {s:>9}  {s:>8}\n", .{
+            "runs", "TTFT", "mean", "p50", "p90", "tok/s",
+        });
+    }
 
     try writeDivider(stdout, total_width);
 
@@ -52,14 +59,26 @@ pub fn print(
     try stdout.writeAll(model);
     try writeSpaces(stdout, model_col - model.len + 1);
 
-    try stdout.print("{d:>4}  {d:>6.0}ms  {d:>7.0}ms  {d:>7.0}ms  {d:>7.0}ms  {d:>8.1}\n", .{
-        stats.n,
-        stats.p50_ttft_ms,
-        stats.mean_ms,
-        stats.p50_ms,
-        stats.p90_ms,
-        stats.mean_tok_s,
-    });
+    if (stats.mean_quality) |q| {
+        try stdout.print("{d:>4}  {d:>6.0}ms  {d:>7.0}ms  {d:>7.0}ms  {d:>7.0}ms  {d:>8.1}  {d:>5.0}/100\n", .{
+            stats.n,
+            stats.p50_ttft_ms,
+            stats.mean_ms,
+            stats.p50_ms,
+            stats.p90_ms,
+            stats.mean_tok_s,
+            q,
+        });
+    } else {
+        try stdout.print("{d:>4}  {d:>6.0}ms  {d:>7.0}ms  {d:>7.0}ms  {d:>7.0}ms  {d:>8.1}\n", .{
+            stats.n,
+            stats.p50_ttft_ms,
+            stats.mean_ms,
+            stats.p50_ms,
+            stats.p90_ms,
+            stats.mean_tok_s,
+        });
+    }
 
     try writeDivider(stdout, total_width);
     try stdout.writeByte('\n');

@@ -8,6 +8,53 @@ const OpenAIAdapter = @import("adapter/openai.zig").OpenAIAdapter;
 const metrics = @import("metrics/metrics.zig");
 const table = @import("output/table.zig");
 
+fn evaluateResponse(
+    allocator: std.mem.Allocator,
+    io: std.Io,
+    evaluator_url: []const u8,
+    prompt: []const u8,
+    response_text: []const u8,
+) !u32 {
+    const Payload = struct {
+        prompt: []const u8,
+        response: []const u8,
+    };
+
+    const body = try std.json.Stringify.valueAlloc(allocator, Payload{
+        .prompt = prompt,
+        .response = response_text,
+    }, .{});
+    defer allocator.free(body);
+
+    var client: std.http.Client = .{ .allocator = allocator, .io = io };
+    defer client.deinit();
+
+    var resp_writer = std.Io.Writer.Allocating.init(allocator);
+    defer resp_writer.deinit();
+
+    const result = try client.fetch(.{
+        .location = .{ .url = evaluator_url },
+        .method = .POST,
+        .payload = body,
+        .extra_headers = &.{.{ .name = "Content-Type", .value = "application/json" }},
+        .response_writer = &resp_writer.writer,
+    });
+
+    if (result.status != .ok) return error.EvaluatorFailed;
+
+    const raw_bytes = resp_writer.written();
+    const ScoreResponse = struct {
+        score: u32,
+    };
+
+    const parsed = try std.json.parseFromSlice(ScoreResponse, allocator, raw_bytes, .{
+        .ignore_unknown_fields = true,
+    });
+    defer parsed.deinit();
+
+    return parsed.value.score;
+}
+
 pub fn main(init: std.process.Init) !void {
     var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -115,10 +162,20 @@ pub fn main(init: std.process.Init) !void {
                     return;
                 };
                 defer resp.deinit(allocator);
+
+                var quality_score: ?u32 = null;
+                if (cfg.evaluator) |ev| {
+                    quality_score = evaluateResponse(allocator, init.io, ev.url, cfg.prompt, resp.text) catch |err| blk: {
+                        try stderr.print("\nwarning: evaluator failed on run {d}: {}\n", .{ i + 1, err });
+                        break :blk null;
+                    };
+                }
+
                 slot.* = .{
                     .ttft_ms = resp.ttft_ms,
                     .total_ms = resp.total_ms,
                     .tokens_generated = resp.tokens_generated,
+                    .quality_score = quality_score,
                 };
             }
             try stderr.print("\n", .{});

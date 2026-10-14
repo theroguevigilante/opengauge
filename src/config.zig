@@ -1,5 +1,9 @@
 const std = @import("std");
 
+pub const EvaluatorConfig = struct {
+    url: []const u8 = "http://127.0.0.1:8000/score",
+};
+
 pub const Config = struct {
     model: []const u8,
     backend: []const u8,
@@ -9,6 +13,7 @@ pub const Config = struct {
     runs: u32 = 1,
     warmup: u32 = 0,
     metrics: []const []const u8 = &.{},
+    evaluator: ?EvaluatorConfig = null,
 };
 
 pub fn loadConfig(allocator: std.mem.Allocator, io: std.Io, path: []const u8) !std.json.Parsed(Config) {
