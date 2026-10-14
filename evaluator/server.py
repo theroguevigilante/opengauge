@@ -45,8 +45,15 @@ async def score_response(req: EvaluationRequest):
     state = f"Prompt: {req.prompt}\nResponse: {req.response}"
     questions = {
         "quality": {
+            "instructions": "Rate the quality and correctness of the response on a scale from 0 to 4.",
             "type": "score",
-            "range": [0, 100]
+            "criteria": [
+                "Complete garbage or irrelevant nonsense",
+                "Very poor, major errors or hallucinations",
+                "Average, partially correct but flawed",
+                "Good, mostly accurate and coherent",
+                "Excellent, perfectly accurate and clear"
+            ]
         }
     }
 
@@ -54,8 +61,11 @@ async def score_response(req: EvaluationRequest):
         res = agent.predict(state, questions)
         answers = res.get("answers", {})
         quality_entry = answers.get("quality", {})
-        score = quality_entry.get("score", 50)
-        return EvaluationResult(score=int(score))
+        raw_score = quality_entry.get("score", 0.0)
+        # Normalize 0..4 score to 0..100 integer
+        normalized = int(round((raw_score / 4.0) * 100))
+        clamped = max(0, min(100, normalized))
+        return EvaluationResult(score=clamped)
     except Exception as e:
         logger.error(f"Error during scoring: {e}")
         raise HTTPException(status_code=500, detail=str(e))
