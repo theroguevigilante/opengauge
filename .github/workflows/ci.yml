@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master", "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master", "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,4 +18,4 @@ jobs:
       - name: Build
         run: zig build
       - name: Test
-        run: zig build test
+        run: zig build test --summary all
