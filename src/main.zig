@@ -7,6 +7,7 @@ const OllamaAdapter = @import("adapter/ollama.zig").OllamaAdapter;
 const OpenAIAdapter = @import("adapter/openai.zig").OpenAIAdapter;
 const metrics = @import("metrics/metrics.zig");
 const table = @import("output/table.zig");
+const profile = @import("profile.zig");
 
 fn evaluateResponse(
     allocator: std.mem.Allocator,
@@ -82,6 +83,24 @@ pub fn main(init: std.process.Init) !void {
             const stdout = &stdout_writer.interface;
             try stdout.print("opengauge v0.1.0\n", .{});
             try stdout.flush();
+        },
+        .profile => {
+            const home_dir = init.environ_map.get("HOME");
+            const profile_path = profile.getProfilePath(allocator, home_dir) catch |err| {
+                try stderr.print("error: failed to resolve profile path: {}\n", .{err});
+                try stderr.flush();
+                return;
+            };
+            defer allocator.free(profile_path);
+
+            const registry = profile.loadProfiles(allocator, init.io, profile_path) catch |err| {
+                try stderr.print("error: failed to load profiles from '{s}': {}\n", .{ profile_path, err });
+                try stderr.flush();
+                return;
+            };
+            defer registry.deinit();
+
+            try table.printProfiles(init.io, registry.value.profiles);
         },
         .run => |config_path| {
             defer allocator.free(config_path);
@@ -183,6 +202,12 @@ pub fn main(init: std.process.Init) !void {
 
             const stats = metrics.Stats.compute(results);
             try table.print(init.io, cfg.backend, cfg.model, stats);
+
+            const home_dir = init.environ_map.get("HOME");
+            profile.saveOrUpdateProfile(allocator, init.io, home_dir, cfg, stats) catch |err| {
+                try stderr.print("warning: failed to save profile: {}\n", .{err});
+                try stderr.flush();
+            };
         },
     }
 }
@@ -193,6 +218,7 @@ fn printUsage() void {
         \\
         \\commands:
         \\  run <config.json>    run a benchmark using the specified config
+        \\  profile, list        display the benchmarked model profiles leaderboard
         \\
         \\options:
         \\  -h, --help           print this help
@@ -202,6 +228,9 @@ fn printUsage() void {
 }
 
 test {
+    _ = @import("cli.zig");
+    _ = @import("config.zig");
     _ = @import("metrics/metrics.zig");
     _ = @import("metrics/timer.zig");
+    _ = @import("profile.zig");
 }
