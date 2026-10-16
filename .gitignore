@@ -5,3 +5,17 @@ build/
 *.pdf
 *.o
 *.a
+
+# Python / Evaluator
+evaluator/.venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# OpenGauge artifacts
+.opengauge/
+.opengauge_profile.json
+
+# OS
+.DS_Store

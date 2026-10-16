@@ -16,7 +16,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = &.{ 
+            .imports = &.{
                 .{ .name = "opengauge", .module = mod },
             },
         }),
@@ -47,4 +47,11 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+
+    const fmt_step = b.step("fmt", "Check code formatting");
+    const fmt = b.addFmt(.{
+        .paths = &.{ "src", "build.zig", "build.zig.zon" },
+        .check = true,
+    });
+    fmt_step.dependOn(&fmt.step);
 }
