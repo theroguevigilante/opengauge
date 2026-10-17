@@ -1,18 +1,27 @@
-//! By convention, root.zig is the root source file when making a package.
+//! OpenGauge library root module.
 const std = @import("std");
-const Io = std.Io;
 
-/// This is a documentation comment to explain the `printAnotherMessage` function below.
-///
-/// Accepting an `Io.Writer` instance is a handy way to write reusable code.
-pub fn printAnotherMessage(writer: *Io.Writer) Io.Writer.Error!void {
-    try writer.print("Run `zig build test` to run the tests.\n", .{});
-}
+pub const config = @import("config.zig");
+pub const metrics = @import("metrics/metrics.zig");
+pub const timer = @import("metrics/timer.zig");
+pub const profile = @import("profile.zig");
+pub const cli = @import("cli.zig");
+pub const table = @import("output/table.zig");
 
-pub fn add(a: i32, b: i32) i32 {
-    return a + b;
-}
+pub const adapter = struct {
+    pub const Adapter = @import("adapter/adapter.zig").Adapter;
+    pub const Request = @import("adapter/adapter.zig").Request;
+    pub const Response = @import("adapter/adapter.zig").Response;
+    pub const OllamaAdapter = @import("adapter/ollama.zig").OllamaAdapter;
+    pub const LlamaCppAdapter = @import("adapter/llama_cpp.zig").LlamaCppAdapter;
+    pub const OpenAIAdapter = @import("adapter/openai.zig").OpenAIAdapter;
+};
 
-test "basic add functionality" {
-    try std.testing.expect(add(3, 7) == 10);
+test {
+    _ = config;
+    _ = metrics;
+    _ = timer;
+    _ = profile;
+    _ = cli;
+    _ = table;
 }
