@@ -1,0 +1,9 @@
+{
+  "model": "gpt-4o-mini",
+  "backend": "openai",
+  "base_url": "https://api.openai.com",
+  "prompt": "Explain gravity in one sentence.",
+  "max_tokens": 64,
+  "runs": 3,
+  "warmup": 1
+}

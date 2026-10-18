@@ -6,41 +6,53 @@ Because Laya is an encoder (BERT-style) rather than a generative LLM, it cannot 
 
 ## Setup
 
-1. **Create a virtual environment (optional but recommended):**
+1. **Create a virtual environment:**
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate
+   python3 -m venv .venv
+   source .venv/bin/activate
    ```
 
 2. **Install dependencies:**
-   *(Note: ModernBERT requires `transformers >= 4.48.0`)*
    ```bash
    pip install -r requirements.txt
+   # or with uv:
+   # uv pip install -r requirements.txt
    ```
 
-3. **Verify the Model Target:**
-   Open `server.py` and ensure `MODEL_NAME` points to the correct HuggingFace repository for Laya (e.g., `"convai/laya-modernbert-large"`).
+3. **Model Weights:**
+   The server automatically loads the official weights from HuggingFace (`convaiinnovations/laya`, ~843 MB ModernBERT-large classifier) on first run and caches them in `~/.cache/huggingface/hub/`.
 
 ## Running the Server
 
-Start the server on `localhost:8000`:
+Start the server on `127.0.0.1:8000`:
 ```bash
 python server.py
+# or directly with the virtualenv:
+# .venv/bin/python server.py
 ```
 
-The first time you run this, it will download the ~421M parameter ModernBERT weights from HuggingFace to your local cache.
+## Endpoints
 
-## Usage
-
-Once running, OpenGauge will automatically hit this endpoint when configured. You can test it manually with curl:
+### Health Check
 
 ```bash
-curl -X POST http://127.0.0.1:8000/score \
-     -H "Content-Type: application/json" \
-     -d '{"prompt": "Write a python loop", "response": "def loop():\n  pass"}'
+curl -s http://127.0.0.1:8000/health
 ```
 
 Expected output:
 ```json
-{"score": 85}
+{"status":"ok","model_loaded":true}
+```
+
+### Quality Scoring
+
+```bash
+curl -X POST http://127.0.0.1:8000/score \
+     -H "Content-Type: application/json" \
+     -d '{"prompt": "Explain gravity in one sentence.", "response": "Gravity is the curvature of spacetime caused by mass and energy attracting objects toward one another."}'
+```
+
+Expected output:
+```json
+{"score": 84}
 ```

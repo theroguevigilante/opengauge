@@ -171,8 +171,11 @@ test "saveOrUpdateProfileAtPath creates and updates entries" {
     const io = std.testing.io;
     const allocator = std.testing.allocator;
 
-    const tmp_path = ".test_tmp_profile.json";
-    defer std.Io.Dir.cwd().deleteFile(io, tmp_path) catch {};
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    const tmp_path = try std.fmt.allocPrint(allocator, ".zig-cache/tmp/{s}/test_profile.json", .{tmp.sub_path});
+    defer allocator.free(tmp_path);
 
     const cfg1 = config.Config{
         .model = "test-model-1",
