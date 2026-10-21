@@ -1,58 +1,45 @@
-# OpenGauge Evaluator (Laya / ModernBERT)
+# Evaluator
 
-This directory contains the Python API server that hosts the **Laya** decision model. Laya is a non-autoregressive "System One" classifier based on the ModernBERT architecture.
+Local FastAPI server running [Laya](https://huggingface.co/convaiinnovations/laya) (`convaiinnovations/laya`, ModernBERT-large classifier) for deterministic response quality scoring.
 
-Because Laya is an encoder (BERT-style) rather than a generative LLM, it cannot be run in standard text-generation endpoints like Ollama or llama.cpp. Instead, we host it locally in this lightweight FastAPI server. OpenGauge will send HTTP POST requests to this server during the benchmark to get deterministic quality scores.
+OpenGauge hits this endpoint after each benchmark run when `evaluator` is configured in `config.json`.
 
-## Setup
+## Requirements
 
-1. **Create a virtual environment:**
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
+- Python 3.10+
+- Hugging Face weights (~840 MB, downloaded on first start to `~/.cache/huggingface/hub/`)
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   # or with uv:
-   # uv pip install -r requirements.txt
-   ```
+## Quickstart
 
-3. **Model Weights:**
-   The server automatically loads the official weights from HuggingFace (`convaiinnovations/laya`, ~843 MB ModernBERT-large classifier) on first run and caches them in `~/.cache/huggingface/hub/`.
-
-## Running the Server
-
-Start the server on `127.0.0.1:8000`:
 ```bash
+cd evaluator
+uv venv .venv && source .venv/bin/activate
+uv pip install -r requirements.txt
 python server.py
-# or directly with the virtualenv:
-# .venv/bin/python server.py
 ```
+
+*(Or use `python3 -m venv .venv` and `pip install -r requirements.txt`)*
+
+The server listens on `127.0.0.1:8000`.
 
 ## Endpoints
 
-### Health Check
+### `GET /health`
+Verifies server and model status.
 
 ```bash
-curl -s http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/health
+# {"status":"ok","model_loaded":true}
 ```
 
-Expected output:
-```json
-{"status":"ok","model_loaded":true}
-```
-
-### Quality Scoring
+### `POST /score`
+Scores a model response against the prompt on a 0–100 scale.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/score \
-     -H "Content-Type: application/json" \
-     -d '{"prompt": "Explain gravity in one sentence.", "response": "Gravity is the curvature of spacetime caused by mass and energy attracting objects toward one another."}'
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Explain gravity in one sentence.", "response": "Gravity is the curvature of spacetime caused by mass and energy."}'
+# {"score":84}
 ```
 
-Expected output:
-```json
-{"score": 84}
-```
+Scoring maps Laya's 0–4 rubric (nonsense → excellent) to a normalized 0–100 integer.
