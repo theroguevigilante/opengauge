@@ -7,6 +7,7 @@ pub const timer = @import("metrics/timer.zig");
 pub const profile = @import("profile.zig");
 pub const cli = @import("cli.zig");
 pub const table = @import("output/table.zig");
+pub const router = @import("server/router.zig");
 
 pub const adapter = struct {
     pub const Adapter = @import("adapter/adapter.zig").Adapter;
@@ -24,4 +25,5 @@ test {
     _ = profile;
     _ = cli;
     _ = table;
+    _ = router;
 }

@@ -233,4 +233,5 @@ test {
     _ = @import("metrics/metrics.zig");
     _ = @import("metrics/timer.zig");
     _ = @import("profile.zig");
+    _ = @import("server/router.zig");
 }
